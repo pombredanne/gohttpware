@@ -1,4 +1,4 @@
-package httpware
+package auth
 
 import (
 	"encoding/base64"
