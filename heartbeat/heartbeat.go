@@ -1,4 +1,4 @@
-package route
+package heartbeat
 
 import (
 	"net/http"
@@ -6,7 +6,7 @@ import (
 )
 
 // Heartbeat endpoint middleware
-func Heartbeat(endpoint string) func(http.Handler) http.Handler {
+func Route(endpoint string) func(http.Handler) http.Handler {
 	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			if strings.EqualFold(r.URL.Path, endpoint) {
