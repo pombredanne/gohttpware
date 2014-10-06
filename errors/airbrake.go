@@ -1,8 +1,10 @@
 package errors
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/op/go-logging"
 	"github.com/tobi/airbrake-go"
 	"github.com/zenazn/goji/web"
 )
@@ -18,4 +20,21 @@ func AirbrakeRecoverer(apiKey string) func(*web.C, http.Handler) http.Handler {
 		return http.HandlerFunc(fn)
 	}
 	return f
+}
+
+type AirbrakeBackend struct {
+	ApiKey string
+}
+
+func NewAirbrakeBackend(apiKey string) *AirbrakeBackend {
+	backend := &AirbrakeBackend{
+		ApiKey: apiKey,
+	}
+	airbrake.ApiKey = backend.ApiKey
+	return backend
+}
+
+func (b *AirbrakeBackend) Log(level logging.Level, calldepth int, rec *logging.Record) error {
+	e := errors.New(rec.Formatted(calldepth + 1))
+	return airbrake.Notify(e)
 }
