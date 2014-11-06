@@ -2,7 +2,6 @@ package jsonp
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 )
 
@@ -10,7 +9,6 @@ func Handle(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		// check the request.. is this jsonp shiz.. if so, let's
 		// make sure we support the callback and return on the way out..
-		log.Println("JSONP, BEFORE....... is this json...? check callback= and headers..")
 
 		callback := r.URL.Query().Get("callback")
 		if callback == "" {
