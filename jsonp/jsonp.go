@@ -3,13 +3,12 @@ package jsonp
 import (
 	"bytes"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 func Handle(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		// check the request.. is this jsonp shiz.. if so, let's
-		// make sure we support the callback and return on the way out..
-
 		callback := r.URL.Query().Get("callback")
 		if callback == "" {
 			h.ServeHTTP(w, r)
@@ -17,71 +16,73 @@ func Handle(h http.Handler) http.Handler {
 		}
 
 		wb := NewResponseBuffer(w)
-		wb.Body.Write([]byte(callback + "("))
 		h.ServeHTTP(wb, r)
-		wb.Body.Write([]byte(")"))
+
+		if strings.Index(wb.Header().Get("Content-Type"), "/json") >= 0 {
+			// Wrap the json data in the js callback function and set the
+			// content type to javascript for the <script>
+			wb.PreBody.Write([]byte(callback + "("))
+			wb.Body.Write([]byte(")"))
+
+			contentLength := wb.PreBody.Len() + wb.Body.Len()
+			wb.Header().Set("Content-Type", "application/javascript")
+			wb.Header().Set("Content-Length", strconv.Itoa(contentLength))
+		}
+
 		wb.Flush()
 	}
 	return http.HandlerFunc(fn)
 }
 
-// Response buffer, based on httptest.ResponseRecorder
-type ResponseBuffer struct {
-	RW        http.ResponseWriter // The actual ResponseWriter to flush to
-	Code      int                 // the HTTP response code from WriteHeader
-	HeaderMap http.Header         // the HTTP response headers
-	Body      *bytes.Buffer       // if non-nil, the bytes.Buffer to append written data to
-	Flushed   bool
-
-	wroteHeader bool
+type responseBuffer struct {
+	Response http.ResponseWriter // the actual ResponseWriter to flush to
+	Status   int                 // the HTTP response code from WriteHeader
+	PreBody  *bytes.Buffer       // buffer to prepend to the content body
+	Body     *bytes.Buffer       // the response content body
+	Flushed  bool
 }
 
-func NewResponseBuffer(w http.ResponseWriter) *ResponseBuffer {
-	return &ResponseBuffer{
-		RW: w, HeaderMap: make(http.Header), Body: &bytes.Buffer{},
+func NewResponseBuffer(w http.ResponseWriter) *responseBuffer {
+	return &responseBuffer{
+		Response: w, Status: 200, //HeaderMap: make(http.Header),
+		PreBody: &bytes.Buffer{}, Body: &bytes.Buffer{},
 	}
 }
 
-func (w *ResponseBuffer) Header() http.Header {
-	return w.HeaderMap
-	// if m == nil {
-	// 	m = make(http.Header)
-	// 	w.HeaderMap = m
-	// }
-	// return m
+func (w *responseBuffer) Header() http.Header {
+	return w.Response.Header() // use the actual response header
 }
 
-func (w *ResponseBuffer) Write(buf []byte) (int, error) {
-	// if !w.wroteHeader {
-	// 	w.WriteHeader(200)
-	// }
-	if w.Body == nil {
-		w.Body = bytes.NewBuffer(buf)
-	} else {
-		w.Body.Write(buf)
-	}
+func (w *responseBuffer) Write(buf []byte) (int, error) {
+	w.Body.Write(buf)
 	return len(buf), nil
 }
 
-func (w *ResponseBuffer) WriteHeader(code int) {
-	if !w.wroteHeader {
-		w.Code = code
-	}
-	w.wroteHeader = true
+func (w *responseBuffer) WriteHeader(status int) {
+	w.Status = status
 }
 
-func (w *ResponseBuffer) Flush() {
-	if !w.Flushed {
-		if !w.wroteHeader {
-			w.WriteHeader(200)
-		}
-		w.RW.WriteHeader(w.Code)
+func (w *responseBuffer) Flush() {
+	if w.Flushed {
+		return
 	}
 
-	n, err := w.RW.Write(w.Body.Bytes())
-	_ = n
-	_ = err
+	w.Response.WriteHeader(w.Status)
 
-	w.Body.Reset()
+	if w.PreBody.Len() > 0 {
+		_, err := w.Response.Write(w.PreBody.Bytes())
+		if err != nil {
+			panic(err)
+		}
+		w.PreBody.Reset()
+	}
+	if w.Body.Len() > 0 {
+		_, err := w.Response.Write(w.Body.Bytes())
+		if err != nil {
+			panic(err)
+		}
+		w.Body.Reset()
+	}
+
 	w.Flushed = true
 }
