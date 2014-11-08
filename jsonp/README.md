@@ -1,14 +1,14 @@
 # JSONP Go http middleware
 
 JSONP is a common technique used to communicate with a JSON-serving Web Service with a 
-Web browser over cross-domains, in place of a XHR request. There is lots of JSONP
-information out there, but the tl;dr on it is a Javascript http client requesting JSONP
-will write a `<script>` tag to the head of a page, with the `src` to the API endpoint,
-with the addition of a `callback` (or `jsonp`) query parameter  that is represents
-randomly-named listening function that will parse the request when it comes back from
+Web browser over cross-domains, in place of a XHR request. There is a lot written about
+JSONP out there, but the tl;dr on it is a Javascript http client requesting JSONP
+will write a `<script>` tag to the head of a page, with the `src` to an API endpoint,
+with the addition of a `callback` (or `jsonp`) query parameter that represents a
+randomly-named listener function that will parse the request when it comes back from
 the server.
 
-This middleware will work with anything that support standard `http.Handler`. The code
+This middleware will work with anything that supports standard `http.Handler`. The code
 is small, so go read it, but it just buffers the response from the rest of the chain,
 and if its a JSON request with a callback, then it will wrap the response in the callback
 function before writing it to the actual response writer. 
