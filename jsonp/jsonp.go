@@ -11,6 +11,9 @@ func Handle(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		callback := r.URL.Query().Get("callback")
 		if callback == "" {
+			callback = r.URL.Query().Get("jsonp")
+		}
+		if callback == "" {
 			h.ServeHTTP(w, r)
 			return
 		}
@@ -44,7 +47,7 @@ type responseBuffer struct {
 
 func NewResponseBuffer(w http.ResponseWriter) *responseBuffer {
 	return &responseBuffer{
-		Response: w, Status: 200, //HeaderMap: make(http.Header),
+		Response: w, Status: 200,
 		PreBody: &bytes.Buffer{}, Body: &bytes.Buffer{},
 	}
 }
