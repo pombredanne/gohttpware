@@ -10,11 +10,10 @@ import (
 )
 
 func AirbrakeRecoverer(apiKey string) func(*web.C, http.Handler) http.Handler {
+	airbrake.ApiKey = apiKey
 	f := func(c *web.C, h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			airbrake.ApiKey = apiKey
 			defer airbrake.CapturePanic(r)
-
 			h.ServeHTTP(w, r)
 		}
 		return http.HandlerFunc(fn)
