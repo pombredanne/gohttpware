@@ -6,12 +6,11 @@ import (
 
 	"github.com/op/go-logging"
 	"github.com/tobi/airbrake-go"
-	"github.com/zenazn/goji/web"
 )
 
-func AirbrakeRecoverer(apiKey string) func(*web.C, http.Handler) http.Handler {
+func AirbrakeRecoverer(apiKey string) func(http.Handler) http.Handler {
 	airbrake.ApiKey = apiKey
-	f := func(c *web.C, h http.Handler) http.Handler {
+	f := func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			defer airbrake.CapturePanic(r)
 			h.ServeHTTP(w, r)
